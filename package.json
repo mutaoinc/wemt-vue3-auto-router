@@ -1,0 +1,69 @@
+{
+  "name": "@wemt/vue3-auto-router",
+  "version": "1.0.22",
+  "type": "module",
+  "description": "An automatic route generation plugin designed specifically for Vue 3 + Vite projects, which can automatically generate Vue Router configuration based on file system structure.",
+  "main": "./dist/index.mjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "README_en.md"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "dev": "rollup -c --watch",
+    "publish": "npm-publish-easier -y",
+    "publish:prepare": "npm-publish-easier",
+    "publish:init": "npm-publish-easier --init",
+    "publish:clean": "npm-publish-easier --clean"
+  },
+  "keywords": [
+    "vite",
+    "plugin",
+    "vue",
+    "router",
+    "auto-router"
+  ],
+  "author": "Mutaoinc & Wemt Team",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mutaoinc/wemt-vue3-auto-router.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mutaoinc/wemt-vue3-auto-router/issues"
+  },
+  "homepage": "https://github.com/mutaoinc/wemt-vue3-auto-router#readme",
+  "peerDependencies": {
+    "glob": "^10.0.0",
+    "vite": "^7.0.0",
+    "vue": "^3.0.0",
+    "vue-router": "^4.0.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^25.0.0",
+    "@rollup/plugin-node-resolve": "^15.0.0",
+    "@rollup/plugin-typescript": "^11.0.0",
+    "@types/node": "^20.0.0",
+    "@wemt/npm-publish-easier": "^1.1.7",
+    "rollup": "^4.0.0",
+    "rollup-plugin-dts": "^6.0.0",
+    "tslib": "^2.0.0",
+    "typescript": "^5.0.0",
+    "vite": "^7.0.0",
+    "vue-tsc": "^2.0.0"
+  }
+}
