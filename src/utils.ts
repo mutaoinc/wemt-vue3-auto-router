@@ -33,7 +33,7 @@ export const defaultOptions: InternalAutoRouterOptions = {
   homeRoute: {
     path: "/",
     name: "home",
-    files: ["index", "home"]
+    fileNames: ["home", "Home", "index", "Index"]
   },
   defaultTitle: "",
   notFound: {
@@ -68,17 +68,17 @@ export function validateOptions(options: AutoRouterOptions): string[] {
     }
   }
   
-  if (options.homeRoute?.files) {
-    if (!Array.isArray(options.homeRoute.files)) {
-      errors.push("homeRoute.files must be an array");
-    } else if (options.homeRoute.files.length === 0) {
-      errors.push("homeRoute.files cannot be empty");
+  if (options.homeRoute?.fileNames) {
+    if (!Array.isArray(options.homeRoute.fileNames)) {
+      errors.push("homeRoute.fileNames must be an array");
+    } else if (options.homeRoute.fileNames.length === 0) {
+      errors.push("homeRoute.fileNames cannot be empty");
     } else {
-      const invalidFiles = options.homeRoute.files.filter(file => 
+      const invalidFiles = options.homeRoute.fileNames.filter((file: string) => 
         typeof file !== 'string' || file.trim() === ''
       );
       if (invalidFiles.length > 0) {
-        errors.push("homeRoute.files must contain non-empty strings");
+        errors.push("homeRoute.fileNames must contain non-empty strings");
       }
     }
   }
@@ -100,7 +100,11 @@ export function mergeOptions(options?: AutoRouterOptions): InternalAutoRouterOpt
     ...defaultOptions,
     ...options,
     naming: { ...defaultOptions.naming, ...options.naming },
-    homeRoute: { ...defaultOptions.homeRoute, ...options.homeRoute },
+    homeRoute: { 
+      ...defaultOptions.homeRoute, 
+      ...options.homeRoute,
+      fileNames: options.homeRoute?.fileNames || defaultOptions.homeRoute.fileNames
+    },
     notFound: { ...defaultOptions.notFound, ...options.notFound },
     output: { ...defaultOptions.output, ...options.output },
     meta: { ...defaultOptions.meta, ...options.meta },
@@ -118,6 +122,22 @@ export async function scanFiles(options: InternalAutoRouterOptions, root: string
   });
 
   return files.filter(file => options.extensions.includes(path.extname(file)));
+}
+
+// 统一的首页文件识别规则
+export function isHomePageFile(filePath: string, options: InternalAutoRouterOptions): boolean {
+  const normalizedPath = normalizePath(filePath);
+  const scanDirPath = normalizePath(path.resolve(process.cwd(), options.scanDir));
+  const relativePath = path.relative(scanDirPath, normalizedPath);
+  
+  // 直接使用配置的首页文件名列表（已在defaultOptions中设置了默认值）
+  const homeFileNames = options.homeRoute.fileNames!; 
+  
+  // 解析文件路径信息
+  const pathInfo = path.parse(relativePath);
+  const fileName = pathInfo.name; // 不转换大小写，严格匹配
+  
+  return homeFileNames.includes(fileName);
 }
 
 // 路径处理工具函数

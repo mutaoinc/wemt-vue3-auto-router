@@ -27,8 +27,8 @@ export interface HomeRouteConfig {
   path?: string;
   /** 首页名称 */
   name?: string;
-  /** 首页文件名数组（不含扩展名，不区分大小写） */
-  files?: string[];
+  /** 首页文件名列表，默认为 ['home', 'index'] */
+  fileNames?: string[];
 }
 
 // 404页面配置

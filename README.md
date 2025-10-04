@@ -83,9 +83,10 @@ export default router;
 
 ```
 src/views/
-├── Home.vue          # 路由: /home
+├── home.vue          # 首页路由: /
 ├── About.vue         # 路由: /about
 ├── user/
+│   ├── index.vue     # 用户首页路由: /user
 │   ├── Profile.vue   # 路由: /user/profile
 │   └── Settings.vue  # 路由: /user/settings
 └── 404.vue          # 404 页面
@@ -123,9 +124,10 @@ const userInfo = ref({});
 ```
 src/
 ├── views/                    # 页面组件目录
-│   ├── Home.vue             # 首页
+│   ├── home.vue             # 首页（路由：/）
 │   ├── About.vue            # 关于页面
 │   ├── user/                # 用户相关页面
+│   │   ├── index.vue        # 用户首页（路由：/user）
 │   │   ├── Profile.vue      # 用户资料
 │   │   └── Settings.vue     # 用户设置
 │   └── 404.vue             # 404 页面
@@ -191,27 +193,67 @@ vueAutoRouter({
 
 ### 首页路由配置
 
+插件会自动识别首页文件并绑定到相应路径。根目录下的首页文件绑定到根路径 `/`，子目录下的首页文件绑定到对应的子目录路径。支持根目录和子目录的统一配置。
+
 ```typescript
 vueAutoRouter({
   homeRoute: {
     path: "/", // 首页路径，默认为 "/"
     name: "home", // 首页名称，默认为 "home"
-    files: ["index", "home", "main"] // 首页文件名数组（严格匹配，区分大小写）
+    fileNames: ["home", "Home", "index", "Index"], // 首页文件名列表，默认值
   },
 });
 ```
 
-**说明**：
-- `files` 数组中的文件名不需要包含扩展名
-- **严格按配置匹配**：只有配置数组中的文件名才会被识别为首页文件
-- **区分大小写**：`index` 和 `Index` 是不同的，需要严格匹配配置中的文件名
-- **支持子目录首页**：
-  - `src/views/index.vue` → 路由路径：`/`
-  - `src/views/user/index.vue` → 路由路径：`/user`
-  - `src/views/dashboard/home.vue` → 路由路径：`/dashboard`（如果 `home` 在配置中）
-- **路由名称规则**：
-  - 根目录首页：使用配置的 `name`（默认：`home`）
-  - 子目录首页：`{目录名}-{首页名称}`（如：`user-home`、`dashboard-home`）
+#### 默认首页文件识别规则
+
+插件默认会将以下文件识别为首页：
+
+```
+src/views/
+├── home.vue     ✅ 根目录首页 → 路由: { path: "/", name: "home" }
+├── Home.vue     ✅ 根目录首页 → 路由: { path: "/", name: "home" }  
+├── index.vue    ✅ 根目录首页 → 路由: { path: "/", name: "home" }
+├── Index.vue    ✅ 根目录首页 → 路由: { path: "/", name: "home" }
+├── user/
+│   ├── home.vue  ✅ 子目录首页 → 路由: { path: "/user", name: "user" }
+│   ├── Home.vue  ✅ 子目录首页 → 路由: { path: "/user", name: "user" }
+│   ├── index.vue ✅ 子目录首页 → 路由: { path: "/user", name: "user" }
+│   └── Index.vue ✅ 子目录首页 → 路由: { path: "/user", name: "user" }
+└── admin/
+    └── index.vue ✅ 子目录首页 → 路由: { path: "/admin", name: "admin" }
+```
+
+#### 自定义首页文件名
+
+你可以通过配置来自定义哪些文件名应该被识别为首页：
+
+```typescript
+vueAutoRouter({
+  homeRoute: {
+    path: "/",
+    name: "home",
+    fileNames: ["main", "landing"] // 自定义首页文件名
+  }
+})
+```
+
+配置后的效果：
+```
+src/views/
+├── main.vue         ✅ 根目录首页 → 路由: { path: "/", name: "home" }
+├── landing.vue      ✅ 根目录首页 → 路由: { path: "/", name: "home" }
+├── home.vue         ❌ 不识别（不在配置列表中）
+└── user/
+    ├── main.vue     ✅ 子目录首页 → 路由: { path: "/user", name: "user" }
+    └── landing.vue  ✅ 子目录首页 → 路由: { path: "/user", name: "user" }
+```
+
+**注意事项：**
+- 文件名匹配严格按照配置进行，不进行大小写转换（默认支持大小写变体）
+- 根目录和子目录使用统一的识别规则
+- 子目录中的首页文件会绑定到对应的子目录路径（如 `/user`）
+- 如果配置了自定义文件名，则只识别配置中的文件名
 
 ### 404 页面配置
 

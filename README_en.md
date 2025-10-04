@@ -83,15 +83,12 @@ Create your page files in the `src/views` directory:
 
 ```
 src/views/
-├── index.vue         # Route: / (home page)
-├── Home.vue          # Route: /home
+├── home.vue          # Home route: /
 ├── About.vue         # Route: /about
 ├── user/
-│   ├── index.vue     # Route: /user (user home page)
+│   ├── index.vue     # User home route: /user
 │   ├── Profile.vue   # Route: /user/profile
 │   └── Settings.vue  # Route: /user/settings
-├── dashboard/
-│   └── home.vue      # Route: /dashboard (if 'home' in config)
 └── 404.vue          # 404 page
 ```
 
@@ -127,11 +124,10 @@ const userInfo = ref({});
 ```
 src/
 ├── views/                    # Page components directory
-│   ├── index.vue             # Root home page
-│   ├── Home.vue             # Home page
+│   ├── home.vue             # Home page (route: /)
 │   ├── About.vue            # About page
 │   ├── user/                # User-related pages
-│   │   ├── index.vue        # User home page (/user)
+│   │   ├── index.vue        # User home page (route: /user)
 │   │   ├── Profile.vue      # User profile
 │   │   └── Settings.vue     # User settings
 │   └── 404.vue             # 404 page
@@ -197,27 +193,67 @@ vueAutoRouter({
 
 ### Home Route Configuration
 
+The plugin automatically recognizes home page files and binds them to corresponding paths. Home page files in the root directory are bound to the root path `/`, and home page files in subdirectories are bound to corresponding subdirectory paths. Supports unified configuration for both root directory and subdirectories.
+
 ```typescript
 vueAutoRouter({
   homeRoute: {
     path: "/", // Home path, default is "/"
     name: "home", // Home name, default is "home"
-    files: ["index", "home", "main"] // Home page file names array (strict matching, case-sensitive)
+    fileNames: ["home", "Home", "index", "Index"], // Home page file names list, default values
   },
 });
 ```
 
-**Description**:
-- File names in the `files` array do not need to include extensions
-- **Strict configuration matching**: Only file names in the configuration array will be recognized as home page files
-- **Case-sensitive**: `index` and `Index` are different and must strictly match the file names in the configuration
-- **Subdirectory home page support**:
-  - `src/views/index.vue` → Route path: `/`
-  - `src/views/user/index.vue` → Route path: `/user`
-  - `src/views/dashboard/home.vue` → Route path: `/dashboard` (if `home` is in configuration)
-- **Route naming rules**:
-  - Root directory home page: Uses configured `name` (default: `home`)
-  - Subdirectory home page: `{directory-name}-{home-name}` (e.g., `user-home`, `dashboard-home`)
+#### Default Home Page File Recognition Rules
+
+The plugin will recognize the following files as home pages by default:
+
+```
+src/views/
+├── home.vue     ✅ Root home page → Route: { path: "/", name: "home" }
+├── Home.vue     ✅ Root home page → Route: { path: "/", name: "home" }  
+├── index.vue    ✅ Root home page → Route: { path: "/", name: "home" }
+├── Index.vue    ✅ Root home page → Route: { path: "/", name: "home" }
+├── user/
+│   ├── home.vue  ✅ Subdirectory home page → Route: { path: "/user", name: "user" }
+│   ├── Home.vue  ✅ Subdirectory home page → Route: { path: "/user", name: "user" }
+│   ├── index.vue ✅ Subdirectory home page → Route: { path: "/user", name: "user" }
+│   └── Index.vue ✅ Subdirectory home page → Route: { path: "/user", name: "user" }
+└── admin/
+    └── index.vue ✅ Subdirectory home page → Route: { path: "/admin", name: "admin" }
+```
+
+#### Custom Home Page File Names
+
+You can customize which file names should be recognized as home pages through configuration:
+
+```typescript
+vueAutoRouter({
+  homeRoute: {
+    path: "/",
+    name: "home",
+    fileNames: ["main", "landing"] // Custom home page file names
+  }
+})
+```
+
+Effect after configuration:
+```
+src/views/
+├── main.vue         ✅ Root home page → Route: { path: "/", name: "home" }
+├── landing.vue      ✅ Root home page → Route: { path: "/", name: "home" }
+├── home.vue         ❌ Not recognized (not in configuration list)
+└── user/
+    ├── main.vue     ✅ Subdirectory home page → Route: { path: "/user", name: "user" }
+    └── landing.vue  ✅ Subdirectory home page → Route: { path: "/user", name: "user" }
+```
+
+**Notes:**
+- File name matching is strictly according to configuration, without case conversion (default supports case variants)
+- Root directory and subdirectories use unified recognition rules
+- Home page files in subdirectories will be bound to corresponding subdirectory paths (e.g., `/user`)
+- If custom file names are configured, only file names in the configuration will be recognized
 
 ### 404 Page Configuration
 

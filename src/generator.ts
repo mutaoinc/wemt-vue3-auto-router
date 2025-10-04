@@ -3,7 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import type { RouteRecordRaw } from "vue-router";
 import type { InternalAutoRouterOptions } from "./types";
-import { scanFiles, generateRoutePath, generateRouteName, generatePageTitle, generateImportStatement, parseVueFileRouteMeta } from "./utils";
+import { scanFiles, generateRoutePath, generateRouteName, generatePageTitle, generateImportStatement, parseVueFileRouteMeta, isHomePageFile, normalizePath } from "./utils";
 import { generateRoutesTemplate, generateConfigTemplate, generateGuardsTemplate } from "./templates";
 
 // 路由生成器类
@@ -56,8 +56,9 @@ export class RouteGenerator {
     if (!this.options.notFound.enabled || !this.options.notFound.component) {
       return false;
     }
-    const notFoundComponentPath = path.resolve(this.root, this.options.notFound.component);
-    return file === notFoundComponentPath;
+    const notFoundComponentPath = normalizePath(path.resolve(this.root, this.options.notFound.component));
+    const normalizedFile = normalizePath(file);
+    return normalizedFile === notFoundComponentPath;
   }
 
   // 从文件创建路由对象
@@ -67,31 +68,53 @@ export class RouteGenerator {
     const pageTitle = generatePageTitle(file, this.options);
     const importStatement = generateImportStatement(file, this.options);
     
-    // 使用配置的首页文件列表进行首页判断（支持子目录）
-    const fileName = path.basename(file, path.extname(file));
-    const homeFiles = this.options.homeRoute.files || ['index', 'home'];
+    // 获取文件的相对路径信息
+    const normalizedPath = normalizePath(file);
+    const scanDirPath = normalizePath(path.resolve(process.cwd(), this.options.scanDir));
+    const relativePath = path.relative(scanDirPath, normalizedPath);
+    const pathInfo = path.parse(relativePath);
+    const dirPath = normalizePath(pathInfo.dir);
     
-    // 首页文件判断：文件名在配置列表中（严格匹配，不进行大小写转换）
-    const isHomePage = homeFiles.includes(fileName);
+    // 判断是否为首页文件
+    const isHomePageFile_ = isHomePageFile(file, this.options);
     
-    let finalPath: string;
-    let finalName: string;
-    
-    if (isHomePage) {
-      // 如果是首页文件，路径为其父目录路径
-      const parentPath = routePath.replace(/\/[^/]*$/, '') || ''; // 移除最后一个路径段
-      finalPath = parentPath === '' ? this.options.homeRoute.path || '/' : `/${parentPath}`;
-      finalName = parentPath === '' ? this.options.homeRoute.name || 'home' : `${parentPath.replace('/', '-')}-${this.options.homeRoute.name || 'home'}`;
-    } else {
-      finalPath = `/${routePath}`;
-      finalName = routeName;
-    }
+    // 判断是否为根目录首页（文件在根目录且是首页文件）
+    const isRootHomePage = (dirPath === '' || dirPath === '.') && isHomePageFile_;
     
     const vueRouteMeta = parseVueFileRouteMeta(file);
 
+    // 根目录首页：绑定到根路径 /
+    if (isRootHomePage) {
+      return {
+        path: this.options.homeRoute.path || "/",
+        name: this.options.homeRoute.name,
+        component: importStatement as any,
+        meta: {
+          title: vueRouteMeta?.title || pageTitle,
+          ...this.options.meta,
+          ...vueRouteMeta,
+        },
+      };
+    }
+    
+    // 子目录首页：绑定到子目录路径
+    if (isHomePageFile_) {
+      return {
+        path: `/${dirPath}`,
+        name: dirPath.replace(/\//g, '-'),
+        component: importStatement as any,
+        meta: {
+          title: vueRouteMeta?.title || pageTitle,
+          ...this.options.meta,
+          ...vueRouteMeta,
+        },
+      };
+    }
+    
+    // 普通页面：使用完整路径
     return {
-      path: finalPath,
-      name: finalName,
+      path: `/${routePath}`,
+      name: routeName,
       component: importStatement as any,
       meta: {
         title: vueRouteMeta?.title || pageTitle,
@@ -105,13 +128,12 @@ export class RouteGenerator {
   private createNotFoundRoute(): RouteRecordRaw {
     const routerDir = path.dirname(this.options.output.routes);
     const notFoundPath = path.resolve(this.root, this.options.notFound.component);
-    const relativePath = path.relative(routerDir, notFoundPath);
-    const normalizedPath = relativePath.replace(/\\/g, "/");
+    const relativeNotFoundPath = normalizePath(path.relative(routerDir, notFoundPath));
 
     return {
       path: this.options.notFound.path,
       name: this.options.notFound.name,
-      component: `() => import('${normalizedPath}')` as any,
+      component: `() => import('${relativeNotFoundPath}')` as any,
       meta: {
         title: "404 Not Found",
         hidden: true,
