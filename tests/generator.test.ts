@@ -27,7 +27,8 @@ describe('RouteGenerator', () => {
       },
       homeRoute: {
         path: '/',
-        name: 'home'
+        name: 'home',
+        files: ['index', 'home']
       },
       defaultTitle: 'Test App',
       notFound: {
@@ -173,39 +174,43 @@ describe('RouteGenerator', () => {
     })
   })
 
-  describe('home page detection', () => {
-    it('should detect Home.vue as home page', () => {
-      // Test the logic that determines if a file is a home page
-      const fileName = 'Home.vue'
-      const routePath = 'Home'
-      
-      const isHomePage = routePath === '' || routePath === 'index' || 
-                         fileName.toLowerCase() === 'home.vue' || 
-                         fileName.toLowerCase() === 'index.vue'
-      
-      expect(isHomePage).toBe(true)
+  describe('home page detection and conflict resolution', () => {
+    it('should handle subdirectory home pages based on configuration', () => {
+      // Test with different home file configurations
+      const testCases = [
+        { file: 'test/index.vue', fileName: 'index', shouldBeHome: true },
+        { file: 'user/home.vue', fileName: 'home', shouldBeHome: true },
+        { file: 'admin/main.vue', fileName: 'main', shouldBeHome: false },
+        { file: 'dashboard/index.vue', fileName: 'index', shouldBeHome: true }
+      ]
+
+      testCases.forEach(({ file, fileName, shouldBeHome }) => {
+        const homeFiles = options.homeRoute.files || ['index', 'home']
+        const isHomePage = homeFiles.includes(fileName)
+        
+        expect(isHomePage).toBe(shouldBeHome)
+        
+        if (shouldBeHome) {
+          const routePath = file.replace('.vue', '')
+          const parentPath = routePath.replace(/\/[^/]*$/, '') || ''
+          const expectedPath = parentPath === '' ? options.homeRoute.path || '/' : `/${parentPath}`
+          
+          // For subdirectory home pages, path should be the parent directory
+          if (file.includes('/')) {
+            expect(expectedPath).toBe(`/${parentPath}`)
+          }
+        }
+      })
     })
 
-    it('should detect index.vue as home page', () => {
-      const fileName = 'index.vue'
-      const routePath = ''
+    it('should respect strict file name matching without case conversion', () => {
+      // Test that file names are matched exactly as configured
+      const homeFiles = ['index', 'Home']  // Note: capital H
       
-      const isHomePage = routePath === '' || routePath === 'index' || 
-                         fileName.toLowerCase() === 'home.vue' || 
-                         fileName.toLowerCase() === 'index.vue'
-      
-      expect(isHomePage).toBe(true)
-    })
-
-    it('should not detect regular files as home page', () => {
-      const fileName = 'About.vue'
-      const routePath = 'About'
-      
-      const isHomePage = routePath === '' || routePath === 'index' || 
-                         fileName.toLowerCase() === 'home.vue' || 
-                         fileName.toLowerCase() === 'index.vue'
-      
-      expect(isHomePage).toBe(false)
+      expect(homeFiles.includes('index')).toBe(true)
+      expect(homeFiles.includes('Index')).toBe(false)  // Should not match
+      expect(homeFiles.includes('Home')).toBe(true)
+      expect(homeFiles.includes('home')).toBe(false)   // Should not match
     })
   })
 })

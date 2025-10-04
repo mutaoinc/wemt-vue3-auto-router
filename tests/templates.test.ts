@@ -18,7 +18,8 @@ describe('Templates', () => {
     },
     homeRoute: {
       path: '/',
-      name: 'home'
+      name: 'home',
+      files: ['index', 'home']
     },
     defaultTitle: 'Test App',
     notFound: {

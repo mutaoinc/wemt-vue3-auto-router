@@ -196,9 +196,22 @@ vueAutoRouter({
   homeRoute: {
     path: "/", // 首页路径，默认为 "/"
     name: "home", // 首页名称，默认为 "home"
+    files: ["index", "home", "main"] // 首页文件名数组（严格匹配，区分大小写）
   },
 });
 ```
+
+**说明**：
+- `files` 数组中的文件名不需要包含扩展名
+- **严格按配置匹配**：只有配置数组中的文件名才会被识别为首页文件
+- **区分大小写**：`index` 和 `Index` 是不同的，需要严格匹配配置中的文件名
+- **支持子目录首页**：
+  - `src/views/index.vue` → 路由路径：`/`
+  - `src/views/user/index.vue` → 路由路径：`/user`
+  - `src/views/dashboard/home.vue` → 路由路径：`/dashboard`（如果 `home` 在配置中）
+- **路由名称规则**：
+  - 根目录首页：使用配置的 `name`（默认：`home`）
+  - 子目录首页：`{目录名}-{首页名称}`（如：`user-home`、`dashboard-home`）
 
 ### 404 页面配置
 

@@ -33,6 +33,7 @@ export const defaultOptions: InternalAutoRouterOptions = {
   homeRoute: {
     path: "/",
     name: "home",
+    files: ["index", "home"]
   },
   defaultTitle: "",
   notFound: {
@@ -64,6 +65,21 @@ export function validateOptions(options: AutoRouterOptions): string[] {
     const invalidExts = options.extensions.filter(ext => !ext.startsWith('.'));
     if (invalidExts.length > 0) {
       errors.push(`Invalid extensions: ${invalidExts.join(', ')}. Extensions must start with '.'`);
+    }
+  }
+  
+  if (options.homeRoute?.files) {
+    if (!Array.isArray(options.homeRoute.files)) {
+      errors.push("homeRoute.files must be an array");
+    } else if (options.homeRoute.files.length === 0) {
+      errors.push("homeRoute.files cannot be empty");
+    } else {
+      const invalidFiles = options.homeRoute.files.filter(file => 
+        typeof file !== 'string' || file.trim() === ''
+      );
+      if (invalidFiles.length > 0) {
+        errors.push("homeRoute.files must contain non-empty strings");
+      }
     }
   }
   
@@ -112,9 +128,9 @@ export function generateRoutePath(filePath: string, options: InternalAutoRouterO
   
   const cleanPath = normalizedPath
     .replace(/\.(vue|ts|js)$/, "") // 移除文件扩展名
-    .replace(/\/index$/, "") // 移除index文件名
     .replace(/^\/+/, ""); // 移除开头的斜杠
 
+  // 不再在这里处理 index 文件，由生成器根据配置处理
   const pathSegments = cleanPath.split("/").filter(Boolean);
   return pathSegments.map(segment => processPathSegment(segment, options.naming)).join("/");
 }

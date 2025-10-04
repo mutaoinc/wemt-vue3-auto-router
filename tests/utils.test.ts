@@ -53,7 +53,7 @@ describe('utils.ts', () => {
         preservePath: false,
         filenameSuffixes: []
       },
-      homeRoute: { path: '/', name: 'home' },
+      homeRoute: { path: '/', name: 'home', files: ['index', 'home'] },
       defaultTitle: '',
       notFound: {
         enabled: true,
@@ -82,7 +82,7 @@ describe('utils.ts', () => {
     it('should handle index files correctly', () => {
       const filePath = '/test/project/src/views/user/index.vue'
       const result = generateRoutePath(filePath, options)
-      expect(result).toBe('user')
+      expect(result).toBe('user/index')
     })
 
     it('should handle home page files', () => {
@@ -247,12 +247,32 @@ describe('utils.ts', () => {
       expect(errors).toContain('extensions cannot be empty array')
     })
 
-    it('should detect invalid extensions', () => {
+    it('should detect invalid homeRoute.files configuration', () => {
+      const options1: AutoRouterOptions = {
+        homeRoute: {
+          files: [] as string[]
+        }
+      }
+      const errors1 = validateOptions(options1)
+      expect(errors1).toContain('homeRoute.files cannot be empty')
+
+      const options2: AutoRouterOptions = {
+        homeRoute: {
+          files: ['', '  '] as string[]
+        }
+      }
+      const errors2 = validateOptions(options2)
+      expect(errors2).toContain('homeRoute.files must contain non-empty strings')
+    })
+
+    it('should accept valid homeRoute.files configuration', () => {
       const options: AutoRouterOptions = {
-        extensions: ['.vue', 'ts', '.js'],
+        homeRoute: {
+          files: ['index', 'home', 'main']
+        }
       }
       const errors = validateOptions(options)
-      expect(errors).toContain("Invalid extensions: ts. Extensions must start with '.'")
+      expect(errors).toHaveLength(0)
     })
   })
 

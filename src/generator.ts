@@ -3,7 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import type { RouteRecordRaw } from "vue-router";
 import type { InternalAutoRouterOptions } from "./types";
-import { scanFiles, generateRoutePath, generateRouteName, generatePageTitle, generateImportStatement, parseVueFileRouteMeta, PLUGIN_NAME } from "./utils";
+import { scanFiles, generateRoutePath, generateRouteName, generatePageTitle, generateImportStatement, parseVueFileRouteMeta } from "./utils";
 import { generateRoutesTemplate, generateConfigTemplate, generateGuardsTemplate } from "./templates";
 
 // 路由生成器类
@@ -21,11 +21,25 @@ export class RouteGenerator {
   async generateRoutes(): Promise<RouteRecordRaw[]> {
     const routes: RouteRecordRaw[] = [];
     const files = await scanFiles(this.options, this.root);
+    const pathMap = new Map<string, string>(); // 用于检测路径冲突
 
     // 生成普通路由
     for (const file of files) {
       if (!this.isNotFoundComponent(file)) {
-        routes.push(this.createRouteFromFile(file));
+        const route = this.createRouteFromFile(file);
+        
+        // 检查路径冲突
+        if (pathMap.has(route.path)) {
+          const existingFile = pathMap.get(route.path);
+          console.warn(`[Route Conflict] Path "${route.path}" is used by multiple files:`);
+          console.warn(`  - ${existingFile}`);
+          console.warn(`  - ${file}`);
+          console.warn(`  Only the first one will be used. Consider renaming one of the files.`);
+          continue; // 跳过冲突的路由
+        }
+        
+        pathMap.set(route.path, file);
+        routes.push(route);
       }
     }
 
@@ -53,15 +67,31 @@ export class RouteGenerator {
     const pageTitle = generatePageTitle(file, this.options);
     const importStatement = generateImportStatement(file, this.options);
     
-    // 修复首页路由判断逻辑
-    const fileName = path.basename(file, path.extname(file)).toLowerCase();
-    const isHomePage = routePath === "" || routePath === "index" || fileName === "home" || fileName === "index";
+    // 使用配置的首页文件列表进行首页判断（支持子目录）
+    const fileName = path.basename(file, path.extname(file));
+    const homeFiles = this.options.homeRoute.files || ['index', 'home'];
+    
+    // 首页文件判断：文件名在配置列表中（严格匹配，不进行大小写转换）
+    const isHomePage = homeFiles.includes(fileName);
+    
+    let finalPath: string;
+    let finalName: string;
+    
+    if (isHomePage) {
+      // 如果是首页文件，路径为其父目录路径
+      const parentPath = routePath.replace(/\/[^/]*$/, '') || ''; // 移除最后一个路径段
+      finalPath = parentPath === '' ? this.options.homeRoute.path || '/' : `/${parentPath}`;
+      finalName = parentPath === '' ? this.options.homeRoute.name || 'home' : `${parentPath.replace('/', '-')}-${this.options.homeRoute.name || 'home'}`;
+    } else {
+      finalPath = `/${routePath}`;
+      finalName = routeName;
+    }
     
     const vueRouteMeta = parseVueFileRouteMeta(file);
 
     return {
-      path: isHomePage ? this.options.homeRoute.path || "/" : `/${routePath}`,
-      name: isHomePage ? this.options.homeRoute.name : routeName,
+      path: finalPath,
+      name: finalName,
       component: importStatement as any,
       meta: {
         title: vueRouteMeta?.title || pageTitle,

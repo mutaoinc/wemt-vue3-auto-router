@@ -129,7 +129,6 @@ export function vueAutoRouter(options?: AutoRouterOptions): Plugin {
     const CACHE_TTL = 1000; // 1秒缓存
 
     const shouldRegenerateRoutesWithCache = (file: string): boolean => {
-      const now = Date.now();
       const cacheKey = file;
       const cached = fileCheckCache.get(cacheKey);
       
