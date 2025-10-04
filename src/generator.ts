@@ -3,7 +3,7 @@ import path from "path";
 import crypto from "crypto";
 import type { RouteRecordRaw } from "vue-router";
 import type { InternalAutoRouterOptions } from "./types";
-import { scanFiles, generateRoutePath, generateRouteName, generatePageTitle, generateImportStatement, parseVueFileRouteMeta } from "./utils";
+import { scanFiles, generateRoutePath, generateRouteName, generatePageTitle, generateImportStatement, parseVueFileRouteMeta, PLUGIN_NAME } from "./utils";
 import { generateRoutesTemplate, generateConfigTemplate, generateGuardsTemplate } from "./templates";
 
 // 路由生成器类
@@ -71,12 +71,13 @@ export class RouteGenerator {
   private createNotFoundRoute(): RouteRecordRaw {
     const routerDir = path.dirname(this.options.output.routes);
     const notFoundPath = path.resolve(this.root, this.options.notFound.component);
-    const relativeNotFoundPath = path.relative(routerDir, notFoundPath).replace(/\\/g, "/");
+    const relativePath = path.relative(routerDir, notFoundPath);
+    const normalizedPath = relativePath.replace(/\\/g, "/");
 
     return {
       path: this.options.notFound.path,
       name: this.options.notFound.name,
-      component: `() => import('${relativeNotFoundPath}')` as any,
+      component: `() => import('${normalizedPath}')` as any,
       meta: {
         title: "404 Not Found",
         hidden: true,
@@ -102,14 +103,24 @@ export class RouteGenerator {
   // 写入文件
   async writeFiles(): Promise<void> {
     try {
-      const [routesContent, configContent, guardsContent] = await Promise.all([
+      const [routesContent, configContent] = await Promise.all([
         this.generateRoutesFile(),
         Promise.resolve(this.generateConfigFile()),
-        Promise.resolve(this.generateGuardsFile()),
       ]);
 
+      // 只有在guards文件不存在或配置为覆盖时才生成
+      let guardsContent = "";
+      const guardsPath = path.resolve(this.root, this.options.output.guards);
+      let shouldWriteGuards = false;
+      
+      if (!fs.existsSync(guardsPath) || this.options.output.overwriteGuards) {
+        guardsContent = this.generateGuardsFile();
+        shouldWriteGuards = true;
+      }
+
       // 计算内容哈希，避免不必要的重新生成
-      const contentHash = this.calculateContentHash(routesContent + configContent + guardsContent);
+      const contentForHash = routesContent + configContent + (shouldWriteGuards ? guardsContent : "");
+      const contentHash = this.calculateContentHash(contentForHash);
       if (contentHash === this.lastGeneratedHash) {
         return;
       }
@@ -119,7 +130,13 @@ export class RouteGenerator {
       // 写入文件
       this.writeFileIfChanged(path.resolve(this.root, routes), routesContent);
       this.writeFileIfChanged(path.resolve(this.root, config), configContent);
-      this.writeFileIfChanged(path.resolve(this.root, guards), guardsContent);
+      
+      // 写入guards文件（根据配置决定是否覆盖）
+      if (shouldWriteGuards) {
+        this.writeFileIfChanged(path.resolve(this.root, guards), guardsContent);
+        const action = this.options.output.overwriteGuards ? "regenerated" : "generated";
+        console.log(`🛡️ [${path.basename(guards)}] Guards file ${action}. You can customize it now.`);
+      }
 
       this.lastGeneratedHash = contentHash;
     } catch (error) {

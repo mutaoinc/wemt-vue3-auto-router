@@ -7,6 +7,16 @@ import type { AutoRouterOptions, InternalAutoRouterOptions, RouteMeta } from "./
 export const PLUGIN_NAME = "vue-auto-router";
 export const SUPPORTED_EXTENSIONS = [".vue", ".ts", ".js"];
 
+// 跨平台路径标准化函数
+export function normalizePath(filePath: string): string {
+  return filePath.replace(/\\/g, "/");
+}
+
+// 跨平台路径比较函数
+export function isSamePath(path1: string, path2: string): boolean {
+  return path.resolve(path1) === path.resolve(path2);
+}
+
 // 默认配置
 export const defaultOptions: InternalAutoRouterOptions = {
   scanDir: "src/views",
@@ -35,6 +45,7 @@ export const defaultOptions: InternalAutoRouterOptions = {
     routes: "src/router/auto/routes.ts",
     config: "src/router/auto/config.ts",
     guards: "src/router/guards.ts",
+    overwriteGuards: false,
   },
 };
 
@@ -56,7 +67,7 @@ export function mergeOptions(options?: AutoRouterOptions): InternalAutoRouterOpt
 // 扫描文件
 export async function scanFiles(options: InternalAutoRouterOptions, root: string): Promise<string[]> {
   const scanPath = path.resolve(root, options.scanDir);
-  const pattern = path.join(scanPath, "**/*.{vue,ts,js}").replace(/\\/g, "/");
+  const pattern = normalizePath(path.join(scanPath, "**/*.{vue,ts,js}"));
 
   const files = await glob(pattern, {
     ignore: options.exclude,
@@ -68,12 +79,14 @@ export async function scanFiles(options: InternalAutoRouterOptions, root: string
 
 // 路径处理工具函数
 export function generateRoutePath(filePath: string, options: InternalAutoRouterOptions): string {
-  const relativePath = path.relative(path.resolve(process.cwd(), options.scanDir), filePath);
-  const cleanPath = relativePath
+  const scanDirPath = path.resolve(process.cwd(), options.scanDir);
+  const relativePath = path.relative(scanDirPath, filePath);
+  const normalizedPath = normalizePath(relativePath);
+  
+  const cleanPath = normalizedPath
     .replace(/\.(vue|ts|js)$/, "") // 移除文件扩展名
     .replace(/\/index$/, "") // 移除index文件名
-    .replace(/^\/+/, "") // 移除开头的斜杠
-    .replace(/\\/g, "/"); // 统一使用正斜杠
+    .replace(/^\/+/, ""); // 移除开头的斜杠
 
   const pathSegments = cleanPath.split("/").filter(Boolean);
   return pathSegments.map(segment => processPathSegment(segment, options.naming)).join("/");
@@ -122,8 +135,9 @@ export function generatePageTitle(filePath: string, options: InternalAutoRouterO
 // 生成导入语句
 export function generateImportStatement(filePath: string, options: InternalAutoRouterOptions): string {
   const routerDir = path.dirname(options.output.routes);
-  const relativePath = path.relative(routerDir, filePath).replace(/\\/g, "/");
-  return `() => import('${relativePath}')`;
+  const relativePath = path.relative(routerDir, filePath);
+  const normalizedPath = normalizePath(relativePath);
+  return `() => import('${normalizedPath}')`;
 }
 
 // 解析Vue文件中的defineOptions

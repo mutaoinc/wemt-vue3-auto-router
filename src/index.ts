@@ -84,20 +84,25 @@ export function vueAutoRouter(options?: AutoRouterOptions): Plugin {
 
   // 判断是否需要重新生成路由
   const shouldRegenerateRoutes = (file: string): boolean => {
+    // 标准化路径处理
     const normalizedFile = path.normalize(file);
     const scanDirPath = path.resolve(process.cwd(), mergedOptions.scanDir);
+    const normalizedScanDir = path.normalize(scanDirPath);
     
     // 检查文件是否在扫描目录内
-    if (!normalizedFile.startsWith(scanDirPath)) return false;
+    if (!normalizedFile.startsWith(normalizedScanDir)) return false;
 
     // 检查文件扩展名
     if (!SUPPORTED_EXTENSIONS.includes(path.extname(file))) return false;
 
     // 排除组件目录和测试文件
-    const relativePath = path.relative(scanDirPath, normalizedFile);
-    return !mergedOptions.exclude.some(excludePattern => 
-      relativePath.includes(excludePattern.replace(/\*\*/g, "").replace(/\*/g, ""))
-    );
+    const relativePath = path.relative(normalizedScanDir, normalizedFile);
+    const normalizedRelativePath = relativePath.replace(/\\/g, "/");
+    
+    return !mergedOptions.exclude.some(excludePattern => {
+      const cleanPattern = excludePattern.replace(/\*\*/g, "").replace(/\*/g, "");
+      return normalizedRelativePath.includes(cleanPattern);
+    });
   };
 
   // 设置文件监听器
