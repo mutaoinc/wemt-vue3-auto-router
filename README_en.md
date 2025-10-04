@@ -83,11 +83,15 @@ Create your page files in the `src/views` directory:
 
 ```
 src/views/
+├── index.vue         # Route: / (home page)
 ├── Home.vue          # Route: /home
 ├── About.vue         # Route: /about
 ├── user/
+│   ├── index.vue     # Route: /user (user home page)
 │   ├── Profile.vue   # Route: /user/profile
 │   └── Settings.vue  # Route: /user/settings
+├── dashboard/
+│   └── home.vue      # Route: /dashboard (if 'home' in config)
 └── 404.vue          # 404 page
 ```
 
@@ -123,9 +127,11 @@ const userInfo = ref({});
 ```
 src/
 ├── views/                    # Page components directory
+│   ├── index.vue             # Root home page
 │   ├── Home.vue             # Home page
 │   ├── About.vue            # About page
 │   ├── user/                # User-related pages
+│   │   ├── index.vue        # User home page (/user)
 │   │   ├── Profile.vue      # User profile
 │   │   └── Settings.vue     # User settings
 │   └── 404.vue             # 404 page
@@ -196,9 +202,22 @@ vueAutoRouter({
   homeRoute: {
     path: "/", // Home path, default is "/"
     name: "home", // Home name, default is "home"
+    files: ["index", "home", "main"] // Home page file names array (strict matching, case-sensitive)
   },
 });
 ```
+
+**Description**:
+- File names in the `files` array do not need to include extensions
+- **Strict configuration matching**: Only file names in the configuration array will be recognized as home page files
+- **Case-sensitive**: `index` and `Index` are different and must strictly match the file names in the configuration
+- **Subdirectory home page support**:
+  - `src/views/index.vue` → Route path: `/`
+  - `src/views/user/index.vue` → Route path: `/user`
+  - `src/views/dashboard/home.vue` → Route path: `/dashboard` (if `home` is in configuration)
+- **Route naming rules**:
+  - Root directory home page: Uses configured `name` (default: `home`)
+  - Subdirectory home page: `{directory-name}-{home-name}` (e.g., `user-home`, `dashboard-home`)
 
 ### 404 Page Configuration
 
