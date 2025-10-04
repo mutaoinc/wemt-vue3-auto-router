@@ -45,13 +45,40 @@ export const defaultOptions: InternalAutoRouterOptions = {
     routes: "src/router/auto/routes.ts",
     config: "src/router/auto/config.ts",
     guards: "src/router/guards.ts",
-    overwriteGuards: false,
   },
 };
+
+// 配置验证函数
+export function validateOptions(options: AutoRouterOptions): string[] {
+  const errors: string[] = [];
+  
+  if (options.scanDir && !options.scanDir.trim()) {
+    errors.push("scanDir cannot be empty");
+  }
+  
+  if (options.extensions && options.extensions.length === 0) {
+    errors.push("extensions cannot be empty array");
+  }
+  
+  if (options.extensions) {
+    const invalidExts = options.extensions.filter(ext => !ext.startsWith('.'));
+    if (invalidExts.length > 0) {
+      errors.push(`Invalid extensions: ${invalidExts.join(', ')}. Extensions must start with '.'`);
+    }
+  }
+  
+  return errors;
+}
 
 // 合并配置
 export function mergeOptions(options?: AutoRouterOptions): InternalAutoRouterOptions {
   if (!options) return defaultOptions;
+
+  // 验证配置
+  const errors = validateOptions(options);
+  if (errors.length > 0) {
+    console.warn(`[${PLUGIN_NAME}] Configuration warnings:`, errors);
+  }
 
   return {
     ...defaultOptions,
@@ -144,12 +171,20 @@ export function generateImportStatement(filePath: string, options: InternalAutoR
 export function parseVueFileRouteMeta(filePath: string): RouteMeta | null {
   try {
     const content = fs.readFileSync(filePath, "utf-8");
-    const defineOptionsRegex = /defineOptions\s*\(\s*\{[\s\S]*?meta\s*:\s*(\{[\s\S]*?\})\s*[\s\S]*?\}\s*\)/;
+    
+    // 改进的正则表达式，更好地处理嵌套结构
+    const defineOptionsRegex = /defineOptions\s*\(\s*\{([\s\S]*?)\}\s*\)/;
     const match = content.match(defineOptionsRegex);
 
     if (!match) return null;
 
-    const metaStr = match[1];
+    // 提取meta对象
+    const optionsStr = match[1];
+    const metaMatch = optionsStr.match(/meta\s*:\s*(\{[\s\S]*?\})(?=\s*[,}]|$)/);
+    
+    if (!metaMatch) return null;
+
+    const metaStr = metaMatch[1];
     return parseRouteMetaObject(metaStr);
   } catch (error) {
     console.warn(`Failed to parse meta in ${filePath}:`, error);
@@ -188,7 +223,24 @@ function parseRouteMetaObject(objStr: string): RouteMeta {
   });
 
   if (cleanStr.includes("params")) {
-    result.params = {};
+    // 增强 params 解析
+    const paramsMatch = cleanStr.match(/params\s*:\s*(\{[\s\S]*?\})/);
+    if (paramsMatch) {
+      try {
+        const paramsStr = paramsMatch[1];
+        // 尝试解析 params 对象
+        const paramsObj = new Function('return ' + paramsStr)();
+        if (typeof paramsObj === 'object' && paramsObj !== null) {
+          result.params = paramsObj;
+        } else {
+          result.params = {};
+        }
+      } catch {
+        result.params = {};
+      }
+    } else {
+      result.params = {};
+    }
   }
 
   return result;

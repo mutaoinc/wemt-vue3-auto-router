@@ -1,6 +1,6 @@
 import type { Plugin, ViteDevServer } from "vite";
 import type { AutoRouterOptions } from "./types";
-import { mergeOptions, PLUGIN_NAME, SUPPORTED_EXTENSIONS } from "./utils";
+import { mergeOptions, PLUGIN_NAME, SUPPORTED_EXTENSIONS, validateOptions } from "./utils";
 import { RouteGenerator } from "./generator";
 import path from "path";
 import fs from "fs";
@@ -13,6 +13,15 @@ export function vueAutoRouter(options?: AutoRouterOptions): Plugin {
   let server: ViteDevServer | null = null;
   let isGenerating = false;
   let pendingRegeneration = false;
+
+  // 验证配置
+  if (options) {
+    const errors = validateOptions(options);
+    if (errors.length > 0) {
+      console.warn(`[${PLUGIN_NAME}] Configuration warnings:`);
+      errors.forEach(error => console.warn(`  - ${error}`));
+    }
+  }
 
   // 防抖生成路由的方法
   const generateRoutesDebounced = (() => {
@@ -108,14 +117,39 @@ export function vueAutoRouter(options?: AutoRouterOptions): Plugin {
   // 设置文件监听器
   const setupFileWatcher = (server: ViteDevServer) => {
     const scanDirPath = path.resolve(server.config.root, mergedOptions.scanDir);
+    const normalizedScanDir = path.normalize(scanDirPath);
     
     // 只监听扫描目录
-    if (fs.existsSync(scanDirPath)) {
-      server.watcher.add(scanDirPath);
+    if (fs.existsSync(normalizedScanDir)) {
+      server.watcher.add(normalizedScanDir);
     }
 
+    // 防抖缓存，避免重复检查
+    const fileCheckCache = new Map<string, boolean>();
+    const CACHE_TTL = 1000; // 1秒缓存
+
+    const shouldRegenerateRoutesWithCache = (file: string): boolean => {
+      const now = Date.now();
+      const cacheKey = file;
+      const cached = fileCheckCache.get(cacheKey);
+      
+      if (cached !== undefined) {
+        // 清理过期缓存
+        setTimeout(() => fileCheckCache.delete(cacheKey), CACHE_TTL);
+        return cached;
+      }
+      
+      const result = shouldRegenerateRoutes(file);
+      fileCheckCache.set(cacheKey, result);
+      
+      // 设置缓存过期
+      setTimeout(() => fileCheckCache.delete(cacheKey), CACHE_TTL);
+      
+      return result;
+    };
+
     const handleFileChange = (eventType: string) => (file: string) => {
-      if (shouldRegenerateRoutes(file)) {
+      if (shouldRegenerateRoutesWithCache(file)) {
         const fileName = path.basename(file);
         generateRoutesDebounced(`File ${eventType}: ${fileName}`);
       }
@@ -127,7 +161,7 @@ export function vueAutoRouter(options?: AutoRouterOptions): Plugin {
     
     // 对于change事件，使用更长的防抖延迟，避免频繁重新生成
     server.watcher.on("change", (file: string) => {
-      if (shouldRegenerateRoutes(file)) {
+      if (shouldRegenerateRoutesWithCache(file)) {
         const fileName = path.basename(file);
         generateRoutesDebounced(`File changed: ${fileName}`, 300);
       }

@@ -49,8 +49,6 @@ export interface OutputConfig {
   config?: string;
   /** 守卫文件输出路径 */
   guards?: string;
-  /** 是否覆盖已存在的守卫文件，默认为 false */
-  overwriteGuards?: boolean;
 }
 
 // 插件配置接口

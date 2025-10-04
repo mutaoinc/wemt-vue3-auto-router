@@ -52,7 +52,11 @@ export class RouteGenerator {
     const routeName = generateRouteName(file, this.options);
     const pageTitle = generatePageTitle(file, this.options);
     const importStatement = generateImportStatement(file, this.options);
-    const isHomePage = routePath === "" || routePath === this.options.homeRoute.name || routePath === "home";
+    
+    // 修复首页路由判断逻辑
+    const fileName = path.basename(file, path.extname(file)).toLowerCase();
+    const isHomePage = routePath === "" || routePath === "index" || fileName === "home" || fileName === "index";
+    
     const vueRouteMeta = parseVueFileRouteMeta(file);
 
     return {
@@ -108,12 +112,12 @@ export class RouteGenerator {
         Promise.resolve(this.generateConfigFile()),
       ]);
 
-      // 只有在guards文件不存在或配置为覆盖时才生成
+      // 只有在guards文件不存在时才生成，避免覆盖用户自定义的guards
       let guardsContent = "";
       const guardsPath = path.resolve(this.root, this.options.output.guards);
       let shouldWriteGuards = false;
       
-      if (!fs.existsSync(guardsPath) || this.options.output.overwriteGuards) {
+      if (!fs.existsSync(guardsPath)) {
         guardsContent = this.generateGuardsFile();
         shouldWriteGuards = true;
       }
@@ -131,11 +135,10 @@ export class RouteGenerator {
       this.writeFileIfChanged(path.resolve(this.root, routes), routesContent);
       this.writeFileIfChanged(path.resolve(this.root, config), configContent);
       
-      // 写入guards文件（根据配置决定是否覆盖）
+      // 只在首次生成时写入guards文件
       if (shouldWriteGuards) {
         this.writeFileIfChanged(path.resolve(this.root, guards), guardsContent);
-        const action = this.options.output.overwriteGuards ? "regenerated" : "generated";
-        console.log(`🛡️ [${path.basename(guards)}] Guards file ${action}. You can customize it now.`);
+        console.log(`🛡️ [${path.basename(guards)}] Guards file generated. You can customize it now.`);
       }
 
       this.lastGeneratedHash = contentHash;
