@@ -18,11 +18,11 @@
 ## 📦 安装
 
 ```bash
-npm install @wemt/vue3-auto-router
+npm install @wemt/vue3-auto-router -D
 # 或
-yarn add @wemt/vue3-auto-router
+yarn add @wemt/vue3-auto-router -D
 # 或
-pnpm add @wemt/vue3-auto-router
+pnpm add @wemt/vue3-auto-router -D
 ```
 
 ## 🚀 快速开始

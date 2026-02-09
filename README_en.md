@@ -18,11 +18,11 @@ An automatic route generation plugin designed specifically for Vue 3 + Vite proj
 ## 📦 Installation
 
 ```bash
-npm install @wemt/vue3-auto-router
+npm install @wemt/vue3-auto-router -D
 # or
-yarn add @wemt/vue3-auto-router
+yarn add @wemt/vue3-auto-router -D
 # or
-pnpm add @wemt/vue3-auto-router
+pnpm add @wemt/vue3-auto-router -D
 ```
 
 ## 🚀 Quick Start
